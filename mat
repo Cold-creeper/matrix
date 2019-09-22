@@ -1,0 +1,776 @@
+#ifndef MATRIX_H
+#define MATRIX_H
+
+
+#include <vector>
+#include <iostream>
+#include <process.h>
+#include <initializer_list>
+
+
+template <class type>
+class matrix{
+private:
+	type *mat;
+	size_t n_row, n_col, m_len;
+
+	//_______constructor________
+	matrix(size_t row, size_t col, size_t len, type *mp) : n_row{ row }, n_col{ col }, m_len{ len }, mat{ mp }{};
+public:
+	template <class type_in>
+	friend class matrix;
+
+	//_______constructors_______
+	matrix();
+	matrix(size_t row, size_t col);
+	matrix(const matrix<type> &mt);
+	template<class type_in>
+	matrix(const matrix<type_in> &mt);
+	matrix(const std::vector<type> &vc);
+	template<class type_in>
+	matrix(const std::vector<type_in> &vc);
+	matrix(const std::initializer_list<type> &list);
+	matrix(const std::initializer_list<const std::initializer_list<type>> &list);
+
+	//________destructor________
+	virtual ~matrix();
+
+	//________operators_________
+	type &operator() (size_t row, size_t col);
+	const type &operator() (size_t row, size_t col) const;
+	matrix<type> operator() (size_t start_row, size_t stop_row, size_t start_col, size_t stop_col) const;
+	matrix<type> operator() (size_t row) const;
+	matrix<type> operator[] (size_t col) const;
+	matrix<type> &operator= (const matrix<type> &mt);
+	template<class type>
+	friend matrix<type> operator+ (const matrix<type> &mt1, const matrix<type> &mt2);
+	template<class type>
+	friend matrix<type> operator- (const matrix<type> &mt1, const matrix<type> &mt2);
+	template<class type>
+	friend matrix<type> operator* (const matrix<type> &mt1, const matrix<type> &mt2);
+	template<class type>
+	friend matrix<type> operator* (const type m, const matrix<type> &mt);
+	template<class type>
+	friend matrix<type> operator* (const matrix<type> &mt, const type m);
+	template<class type>
+	friend matrix<type> operator/ (const matrix<type> &mt, const type d);
+
+	template<class type>
+	friend std::ostream &operator<< (std::ostream &s, const matrix<type> &m);
+
+	//_________methods__________
+	void print() const;
+	size_t rows() const { return n_row; }
+	size_t columns() const { return n_col; }
+	size_t len() const { return m_len; }
+	void reset(size_t row, size_t col);
+	void resize(size_t row, size_t col);
+	void cut(size_t start_row, size_t stop_row, size_t start_col, size_t stop_col);
+	matrix<type> &get_row(size_t row, matrix<type> &mt) const;
+	matrix<type> &set_row(size_t row, const matrix<type> &mt);
+	matrix<type> &get_col(size_t col, matrix<type> &mt) const;
+	matrix<type> &set_col(size_t col, const matrix<type> &mt);
+	matrix<type> &get_mat(size_t start_row, size_t stop_row, size_t start_col, size_t stop_col, matrix<type> &mt) const;
+	matrix<type> &set_mat(size_t start_row, size_t start_col, const matrix<type> &mt);
+	matrix<type> &add_rows(size_t start_row, const matrix<type> &mt);
+	matrix<type> &add_columns(size_t start_col, const matrix<type> &mt);
+	void swap_row(size_t row1, size_t row2);
+	void swap_col(size_t col1, size_t col2);
+};
+
+//__________public__________
+
+
+//_______constructors_______
+
+template <class type>
+inline
+matrix<type>::matrix() : n_row{ 0 }, n_col{ 0 }, m_len{ 0 } {}
+
+template <class type>
+inline
+matrix<type>::matrix(size_t row, size_t col) : n_row(row), n_col(col), m_len(row * col) {
+	if (this->n_row != 0 && this->n_col != 0) this->mat = new type[this->m_len];
+}
+
+template <class type>
+matrix<type>::matrix(const matrix<type> &mt) : n_row{ mt.n_row }, n_col{ mt.n_col }, m_len{ mt.m_len } {
+	if (this->m_len != 0) {
+		this->mat = new type[this->m_len];
+		for (size_t i = 0; i < this->m_len; ++i) this->mat[i] = mt.mat[i];
+	}
+}
+
+template<class type> template <class type_in>
+matrix<type>::matrix(const matrix<type_in> &mt) : n_row{ mt.n_row }, n_col{ mt.n_col }, m_len{ mt.m_len } {
+	if (this->m_len != 0) {
+		this->mat = new type[this->m_len];
+		for (size_t i = 0; i < this->m_len; ++i) this->mat[i] = static_cast<type>(mt.mat[i]);
+	}
+}
+
+template <class type>
+matrix<type>::matrix(const std::vector<type> &vc) : n_row{ vc.size() }, n_col{ vc.size() == 0 ? size_t(0) : size_t(1) }, m_len{ vc.size() } {
+	if (this->m_len != 0) {
+		this->mat = new type[this->m_len];
+		for (size_t i = 0; i < this->m_len; ++i) this->mat[i] = vc[i];
+	}
+}
+
+template <class type>  template <class type_in>
+matrix<type>::matrix(const std::vector<type_in> &vc) : n_row{ vc.size() }, n_col{ vc.size() == 0 ? size_t(0) : size_t(1) }, m_len{ vc.size() } {
+	if (this->m_len != 0) {
+		this->mat = new type[this->m_len];
+		for (size_t i = 0; i < this->m_len; ++i) this->mat[i] = static_cast<type>(vc[i]);
+	}
+}
+
+template <class type>
+matrix<type>::matrix(const std::initializer_list<type> &list) :
+	n_row(list.size()), n_col(1) {
+	if (bool(n_row)) {
+		this->m_len = this->n_row;
+		this->mat = new type[this->m_len];
+		type *t{ this->mat };
+		for (const type *iter{ list.begin() }; iter != list.end(); ++iter, ++t) *t = *iter;
+	}
+}
+
+template <class type>
+matrix<type>::matrix(const std::initializer_list<const std::initializer_list<type>> &list) :
+	n_row(list.size()), n_col(list.begin()->size()) {
+	if (bool(n_row) && bool(n_col)) {
+		size_t i{ 0 };
+		this->m_len = this->n_row * this->n_col;
+		this->mat = new type[this->m_len];
+		for (const std::initializer_list<type> *iter{ list.begin() };
+			iter != list.end() && this->n_col == iter->size(); ++iter) {
+			for (const type *in_iter{ iter->begin() }; in_iter != iter->end(); ++in_iter, ++i) this->mat[i] = *in_iter;
+		}
+		if (i < this->n_row) {
+			std::cerr << "error\n";
+			exit(1);
+		}
+	}
+}
+
+
+//________destructor________
+
+template <class type>
+inline
+matrix<type>::~matrix() {
+	if (this->m_len != 0) delete[] this->mat;
+}
+
+
+//________operators_________
+
+template <class type>
+inline
+type &matrix<type>::operator() (size_t row, size_t col) {
+	if (row < this->n_row && col < this->n_col) return this->mat[this->n_col * row + col];
+	else {
+		std::cerr << "error\n";
+		exit(1);
+	}
+}
+
+template <class type>
+inline
+const type &matrix<type>::operator() (size_t row, size_t col) const {
+	if (row < this->n_row && col < this->n_col) return this->mat[this->n_col * row + col];
+	else {
+		std::cerr << "error\n";
+		exit(1);
+	}
+}
+
+template <class type>
+matrix<type> matrix<type>::operator() (size_t start_row, size_t stop_row, size_t start_col, size_t stop_col) const {
+	matrix<type> mt;
+	this->get_mat(start_row, stop_row, start_col, stop_col, mt);
+	return mt;
+}
+
+template <class type>
+matrix<type> matrix<type>::operator() (size_t row) const {
+	matrix<type> mt;
+	this->get_row(row, mt);
+	return mt;
+}
+
+template <class type>
+matrix<type> matrix<type>::operator[] (size_t col) const {
+	matrix<type> mt;
+	this->get_col(col, mt);
+	return mt;
+}
+
+template<class type>
+matrix<type> &matrix<type>::operator= (const matrix<type> &mt) {
+	if (mt.m_len != 0) {
+		if (this->m_len != 0) delete[] this->mat;
+		this->n_row = mt.n_row;
+		this->n_col = mt.n_col;
+		this->m_len = mt.m_len;
+		this->mat = new type[this->m_len];
+		type *t{ this->mat }, *m{ mt.mat }, *e{ t + this->m_len };
+		while (t < e) {
+			*t = *m;
+			++t;
+			++m;
+		}
+	}
+	else if (this->m_len != 0) {
+		delete[] this->mat;
+		this->mat = nullptr;
+		this->n_row = 0;
+		this->n_col = 0;
+		this->m_len = 0;
+	}
+	return *this;
+}
+
+template<class type>
+matrix<type> operator+ (const matrix<type> &mt1, const matrix<type> &mt2) {
+	if (mt1.n_row == mt2.n_row && mt1.n_col == mt2.n_col) {
+		if (mt1.m_len != 0) {
+			type *mat = new type[mt1.m_len], *t{ mat }, *m1{ mt1.mat }, *m2{ mt2.mat }, *e{ t + mt1.m_len };
+			while (t < e) {
+				*t = *m1 + *m2;
+				++t;
+				++m1;
+				++m2;
+			}
+			return matrix<type>{mt1.n_row, mt1.n_col, mt1.m_len, mat};
+		}
+		else return matrix<type>{0, 0, 0, nullptr};
+	}
+	else {
+		std::cerr << "error\n";
+		exit(1);
+	}
+}
+
+template<class type>
+matrix<type> operator- (const matrix<type> &mt1, const matrix<type> &mt2) {
+	if (mt1.n_row == mt2.n_row && mt1.n_col == mt2.n_col) {
+		if (mt1.m_len != 0) {
+			type *mat = new type[mt1.m_len], *t{ mat }, *m1{ mt1.mat }, *m2{ mt2.mat }, *e{ t + mt1.m_len };
+			while (t < e) {
+				*t = *m1 - *m2;
+				++t;
+				++m1;
+				++m2;
+			}
+			return matrix<type>{mt1.n_row, mt1.n_col, mt1.m_len, mat};
+		}
+		else return matrix<type>{0, 0, 0, nullptr};
+	}
+	else {
+		std::cerr << "error\n";
+		exit(1);
+	}
+}
+
+template<class type>
+matrix<type> operator* (const matrix<type> &mt1, const matrix<type> &mt2) {
+	if (mt1.n_col == mt2.n_row) {
+		if (mt1.m_len != 0) {
+			type *mat = new type[mt1.n_row * mt2.n_col];
+			type *t{ mat }, *m1{ mt1.mat }, *m2{ mt2.mat }, *em{ t + mt1.n_row * mt2.n_col },
+				*ec{ m2 + mt2.n_col }, *es{ m1 + mt1.n_col };
+			size_t i{ 0 };
+			while (t < em) {
+				while (m2 < ec) {
+					*t = type();
+					while (m1 < es) {
+						*t += (*m1) * (*m2);
+						m2 += mt2.n_col;
+						++m1;
+					}
+					m2 = mt2.mat + ++i;
+					m1 -= mt1.n_col;
+					++t;
+				}
+				m1 += mt1.n_col;
+				es += mt1.n_col;
+				m2 = mt2.mat;
+				i = 0;
+			}
+			return matrix<type>(mt1.n_row, mt2.n_col, mt1.n_row * mt2.n_col, mat);
+		}
+		else return matrix<type>{0, 0, 0, nullptr};
+	}
+	else {
+		std::cerr << "error\n";
+		exit(1);
+	}
+}
+
+template<class type>
+matrix<type> operator* (const type m, const matrix<type> &mt) {
+	if (mt.m_len != 0) {
+		type *mat = new type[mt.m_len], *t{ mat }, *p{ mt.mat }, *e{ t + mt.m_len };
+		while (t < e) {
+			*t = *p * m;
+			++t;
+			++p;
+		}
+		return matrix<type>{mt.n_row, mt.n_col, mt.m_len, mat};
+	}
+	else return matrix<type>{0, 0, 0, nullptr};
+}
+
+template<class type>
+matrix<type> operator* (const matrix<type> &mt, const type m) {
+	if (mt.m_len != 0) {
+		type *mat = new type[mt.m_len], *t{ mat }, *p{ mt.mat }, *e{ t + mt.m_len };
+		while (t < e) {
+			*t = *p * m;
+			++t;
+			++p;
+		}
+		return matrix<type>{mt.n_row, mt.n_col, mt.m_len, mat};
+	}
+	else return matrix<type>{0, 0, 0, nullptr};
+}
+
+template<class type>
+matrix<type> operator/ (const matrix<type> &mt, const type d) {
+	if (mt.m_len != 0) {
+		type *mat = new type[mt.m_len], *t{ mat }, *p{ mt.mat }, *e{ t + mt.m_len };
+		while (t < e) {
+			*t = *p / d;
+			++t;
+			++p;
+		}
+		return matrix<type>{mt.n_row, mt.n_col, mt.m_len, mat};
+	}
+	else return matrix<type>{0, 0, 0, nullptr};
+}
+
+
+
+template<class type>
+std::ostream &operator<< (std::ostream &s, const matrix<type> &m) {
+	type *t{ m.mat }, *es{ t + m.n_col }, *em{ t + m.m_len };
+	while (t < em) {
+		while (t < es) {
+			s << *t << '\t';
+			++t;
+		}
+		s << '\n';
+		es += m.n_col;
+	}
+	return s;
+}
+
+
+//_________methods__________
+
+template <class type>
+void matrix<type>::print() const {
+	for (size_t i = 0, j = 1; i < m_len; ++i, ++j) {
+		std::cout << mat[i] << '\t';
+		if (j == n_col) {
+			j = 0;
+			std::cout << '\n';
+		}
+	}
+}
+
+template <class type>
+void matrix<type>::reset(size_t row, size_t col) {
+	if (this->m_len != 0) delete[] this->mat;
+	this->n_row = row;
+	this->n_col = col;
+	this->m_len = row * col;
+	this->mat = new type[this->m_len];
+}
+
+template <class type>
+void matrix<type>::resize(size_t row, size_t col) {
+	if (this->m_len == 0) {
+		this->n_row = row;
+		this->n_col = col;
+		this->m_len = row * col;
+		this->mat = new type[this->m_len];
+	}
+	else {
+		type *buf{ this->mat };
+		this->m_len = row * col;
+		this->mat = new type[this->m_len];
+		size_t d;
+		type *t{ this->mat }, *b{ buf }, *em{ t }, *es{ t };
+		if (col < this->n_col) {
+			d = this->n_col - col;
+			es += col;
+			em += (this->n_row < row ? this->n_row : row) * col;
+			while (t < em) {
+				while (t < es) {
+					*t = *b;
+					++t;
+					++b;
+				}
+				es += col;
+				b += d;
+			}
+		}
+		else {
+			d = col - this->n_col;
+			es += this->n_col;
+			em += row * this->n_col;
+			int c{ 0 };
+			while (t < em) {
+				while (t < es) {
+					*t = *b;
+					++t;
+					++b;
+				}
+				es += col;
+				t += d;
+			}
+		}
+		this->n_row = row;
+		this->n_col = col;
+		if (this->m_len != 0) delete[] buf;
+	}
+}
+
+template <class type>
+void matrix<type>::cut(size_t start_row, size_t stop_row, size_t start_col, size_t stop_col) {
+	if (this->m_len == 0) return;
+	if (stop_row < this->n_row && start_row <= stop_row && stop_col < this->n_col && start_col <= stop_col) {
+		size_t col{ stop_col - start_col + 1 };
+		this->m_len = (stop_row - start_row + 1) * (stop_col - start_col + 1);
+		type *buf = new type[this->m_len], *t{ this->mat + this->n_col * start_row + start_col },
+			*b{ buf }, *es{ b + col }, *em{ b + this->m_len };
+		stop_col = this->n_col - col;
+		while (b < em) {
+			while (b < es) {
+				*b = *t;
+				++t;
+				++b;
+			}
+			es += col;
+			t += stop_col;
+		}
+		delete[] this->mat;
+		this->mat = buf;
+		this->n_col = col;
+		this->n_row = stop_row = start_row + 1;
+	}
+}
+
+template <class type>
+matrix<type> &matrix<type>::get_row(size_t row, matrix<type> &mt) const {
+	mt.reset(1, this->n_col);
+	if (row < this->n_row) {
+		type *t{ this->mat + row * this->n_col }, *m{ mt.mat }, *e{ m + mt.m_len };
+		while (m < e) {
+			*m = *t;
+			++t;
+			++m;
+		}
+	}
+	else {
+		std::cerr << "error\n";
+		exit(1);
+	}
+	return mt;
+}
+
+template <class type>
+matrix<type> &matrix<type>::set_row(size_t row, const matrix<type> &mt) {
+	if (this->m_len == 0 && mt.m_len != 0 && mt.n_row == 1) {
+		this->n_row = 1;
+		this->n_col = mt.n_col;
+		this->m_len = mt.m_len;
+		this->mat = new type[this->m_len];
+		type *t{ this->mat }, *m{ mt.mat }, *e{ t + this->m_len };
+		while (t < e) {
+			*t = *m;
+			++t;
+			++m;
+		}
+		return *this;
+	}
+	if (row < this->n_row && mt.n_row == 1 && mt.n_col == this->n_col) {
+		type *t{ this->mat + row * this->n_col }, *m{ mt.mat }, *e{ m + mt.m_len };
+		while (m < e) {
+			*t = *m;
+			++t;
+			++m;
+		}
+	}
+	else {
+		std::cerr << "error\n";
+		exit(1);
+	}
+	return *this;
+}
+
+template <class type>
+matrix<type> &matrix<type>::get_col(size_t col, matrix<type> &mt) const {
+	mt.reset(this->n_row, 1);
+	if (col < this->n_col) {
+		type *t{ this->mat + col }, *m{ mt.mat }, *e{ t + this->m_len };
+		while (t < e) {
+			*m = *t;
+			++m;
+			t += this->n_col;
+		}
+	}
+	else {
+		std::cerr << "error\n";
+		exit(1);
+	}
+	return mt;
+}
+
+template <class type>
+matrix<type> &matrix<type>::set_col(size_t col, const matrix<type> &mt) {
+	if (this->m_len == 0 && mt.m_len != 0 && mt.n_col == 1) {
+		this->n_row = mt.n_row;
+		this->n_col = 1;
+		this->m_len = mt.m_len;
+		this->mat = new type[this->m_len];
+		type *t{ this->mat }, *m{ mt.mat }, *e{ t + this->m_len };
+		while (t < e) {
+			*t = *m;
+			++t;
+			++m;
+		}
+		return *this;
+	}
+	if (col < this->n_col && mt.n_col == 1 && mt.n_row == this->n_row) {
+		type *t{ this->mat + col }, *m{ mt.mat}, *e{ m + mt.m_len };
+		while (m < e) {
+			*t = *m;
+			t += this->n_col;
+			++m;
+		}
+	}
+	else {
+		std::cerr << "error\n";
+		exit(1);
+	}
+	return *this;
+}
+
+template <class type>
+matrix<type> &matrix<type>::get_mat(size_t start_row, size_t stop_row, size_t start_col, size_t stop_col, matrix<type> &mt) const {
+	++stop_row;
+	++stop_col;
+	if (stop_row <= this->n_row && start_row <= stop_row && stop_col <= this->n_col && start_col <= stop_col) {
+		mt.reset(stop_row - start_row, stop_col - start_col);
+		type *t{this->mat + this->n_col * start_row + start_col }, *m{ mt.mat },
+			*es{ t + stop_col - start_col }, *em{ m + mt.m_len };
+		size_t d{ this->n_col - mt.n_col };
+		while (m < em) {
+			while (t < es) {
+				*m = *t;
+				++m;
+				++t;
+			}
+			t += d;
+			es += this->n_col;
+		}
+	}
+	else {
+		std::cerr << "error\n";
+		exit(1);
+	}
+	return mt;
+}
+
+template <class type>
+matrix<type> &matrix<type>::set_mat(size_t start_row, size_t start_col, const matrix<type> &mt) {
+	if (this->m_len == 0 && mt.m_len != 0) {
+		this->n_row = mt.n_row;
+		this->n_col = mt.n_col;
+		this->m_len = mt.m_len;
+		this->mat = new type[this->m_len];
+		type *t{ this->mat }, *m{ mt.mat }, *e{ t + this->m_len };
+		while (t < e) {
+			*t = *m;
+			++t;
+			++m;
+		}
+		return *this;
+	}
+	size_t stop_row{ start_row + mt.n_row }, stop_col{ start_col + mt.n_col };
+	if (stop_row <= this->n_row && start_row <= stop_row && stop_col <= this->n_col && start_col <= stop_col) {
+		type *t{ this->mat + start_col + start_row * this->n_col }, *m{ mt.mat },
+			*es{ t + mt.n_col }, *em{ m + mt.m_len };
+		size_t d{ this->n_col - mt.n_col };
+		while (m < em) {
+			while (t < es) {
+				*t = *m;
+				++t;
+				++m;
+			}
+			t += d;
+			es += this->n_col;
+		}
+	}
+	else {
+		std::cerr << "error\n";
+		exit(1);
+	}
+	return *this;
+}
+
+template <class type>
+matrix<type> &matrix<type>::add_rows(size_t start_row, const matrix<type> &mt) {
+	if (this == &mt) {
+		matrix<type> mt_c{ mt };
+		this->add_rows(start_row, mt_c);
+		return *this;
+	}
+	if (this->m_len == 0 && mt.m_len != 0) {
+		this->n_row = mt.n_row;
+		this->n_col = mt.n_col;
+		this->m_len = mt.m_len;
+		this->mat = new type[this->m_len];
+		type *t{ this->mat }, *m{ mt.mat }, *e{ t + this->m_len };
+		while (t < e) {
+			*t = *m;
+			++t;
+			++m;
+		}
+	}
+	else {
+		if (start_row <= this->n_row && this->n_col == mt.n_col) {
+			type *buf{ this->mat }, *e{ this->mat + this->n_col * start_row };
+			this->n_row += mt.n_row;
+			this->m_len += mt.m_len;
+			if (this->m_len != 0) this->mat = new type[this->m_len];
+			type *t{ this->mat }, *b{ buf }, *m{ mt.mat };
+			while (b < e) {
+				*t = *b;
+				++t;
+				++b;
+			}
+			e = m + mt.m_len;
+			while (m < e) {
+				*t = *m;
+				++t;
+				++m;
+			}
+			e = this->mat + this->m_len;
+			while (t < e) {
+				*t = *b;
+				++t;
+				++b;
+			}
+			if(this->m_len != 0) delete[] buf;
+		}
+		else {
+			std::cerr << "error\n";
+			exit(1);
+		}
+	}
+	return *this;
+}
+
+template <class type>
+matrix<type> &matrix<type>::add_columns(size_t start_col, const matrix<type> &mt) {
+	if (this == &mt) {
+		matrix<type> mt_c{ mt };
+		this->add_columns(start_col, mt_c);
+		return *this;
+	}
+	if (this->m_len == 0 && mt.m_len != 0) {
+		this->n_row = mt.n_row;
+		this->n_col = mt.n_col;
+		this->m_len = mt.m_len;
+		this->mat = new type[this->m_len];
+		type *t{ this->mat }, *m{ mt.mat }, *e{ t + this->m_len };
+		while (t < e) {
+			*t = *m;
+			++t;
+			++m;
+		}
+	}
+	else {
+		if (start_col <= this->n_col && this->n_row == mt.n_row) {
+			size_t stop_col{ this->n_col - start_col };
+			type *buf{ this->mat };
+			this->n_col += mt.n_col;
+			this->m_len += mt.m_len;
+			if (this->m_len != 0) this->mat = new type[this->m_len];
+			type *t{ this->mat }, *m{ mt.mat }, *b{ buf }, *e{ t + this->m_len }, *s{ t };
+			while (t < e) {
+				s += start_col;
+				while (t < s) {
+					*t = *b;
+					++t;
+					++b;
+				}
+				s += mt.n_col;
+				while (t < s) {
+					*t = *m;
+					++t;
+					++m;
+				}
+				s += stop_col;
+				while (t < s) {
+					*t = *b;
+					++t;
+					++b;
+				}
+			}
+			if (this->m_len != 0) delete[] buf;
+		}
+		else {
+			std::cerr << "error\n";
+			exit(1);
+		}
+	}
+	return *this;
+}
+
+template <class type>
+void matrix<type>::swap_row(size_t row1, size_t row2) {
+	if (row1 < this->n_row && row2 < this->n_row) {
+		if (this->m_len != 0) {
+			type buf, *r1{ this->mat + row1 * this->n_col }, *r2{ this->mat + row2 * this->n_col }, *e{ r1 + this->n_col };
+			while (r1 < e) {
+				buf = *r1;
+				*r1 = *r2;
+				*r2 = buf;
+				++r1;
+				++r2;
+			}
+		}
+	}
+	else {
+		std::cerr << "error\n";
+		exit(1);
+	}
+}
+
+template <class type>
+void matrix<type>::swap_col(size_t col1, size_t col2) {
+	if (col1 < this->n_col && col2 < this->n_col) {
+		if (this->m_len != 0) {
+			type buf, *p1{ this->mat + col1 }, *p2{ this->mat + col2 }, *e{ p1 + this->m_len };
+			while (p1 < e) {
+				buf = *p1;
+				*p1 = *p2;
+				*p2 = buf;
+				p1 += this->n_col;
+				p2 += this->n_col;
+			}
+		}
+	}
+	else {
+		std::cerr << "error\n";
+		exit(1);
+	}
+}
+
+#endif
